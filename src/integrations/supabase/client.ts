@@ -5,26 +5,54 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// Validate environment variables
+const validateConfig = () => {
+  const errors: string[] = [];
+  
+  if (!SUPABASE_URL) {
+    errors.push('VITE_SUPABASE_URL is missing');
+  } else if (!SUPABASE_URL.includes('supabase.co')) {
+    errors.push('VITE_SUPABASE_URL is invalid - should be a Supabase URL');
+  }
+  
+  if (!SUPABASE_PUBLISHABLE_KEY) {
+    errors.push('VITE_SUPABASE_PUBLISHABLE_KEY is missing');
+  }
+  
+  if (errors.length > 0) {
+    console.error('❌ Supabase Configuration Errors:', errors);
+    return false;
+  }
+  
+  console.log('✅ Supabase Configuration Valid');
+  return true;
+};
+
+const isConfigValid = validateConfig();
+
 console.log('Supabase Config:', {
   url: SUPABASE_URL,
   keyExists: !!SUPABASE_PUBLISHABLE_KEY,
-  env: import.meta.env
+  isValid: isConfigValid,
 });
 
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  console.error('Missing Supabase configuration!', {
-    urlMissing: !SUPABASE_URL,
-    keyMissing: !SUPABASE_PUBLISHABLE_KEY
+// Create client only if config is valid
+let supabase: any;
+
+try {
+  supabase = createClient<Database>(SUPABASE_URL || '', SUPABASE_PUBLISHABLE_KEY || '', {
+    auth: {
+      storage: typeof window !== 'undefined' ? localStorage : undefined,
+      persistSession: true,
+      autoRefreshToken: true,
+    }
   });
+} catch (error) {
+  console.error('Failed to initialize Supabase client:', error);
+  throw new Error('Supabase client initialization failed. Check your environment variables.');
 }
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+export { supabase };
